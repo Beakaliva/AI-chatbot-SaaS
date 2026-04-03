@@ -123,6 +123,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://beapc:3000',
     'http://chatflow.vercel.app',
+    'http://10.15.8.59:3000'
 ]
 
 CORS_ALLOWS_CREDENTIALS = True

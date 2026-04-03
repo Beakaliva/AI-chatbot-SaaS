@@ -13,23 +13,26 @@ import { useBotStore } from "@/store/botStore"
 import { Bot, Document } from "@/types"
 import api from "@/lib/api"
 
-type Tab = "config" | "documents" | "widget" | "preview" | "stats"
+type Tab = "config" | "documents" | "widget" | "preview" | "stats" | "conversations"
 
 export default function BotDetailPage() {
   const { id }   = useParams()
   const router   = useRouter()
   const { updateBot, deleteBot } = useBotStore()
 
-  const [bot, setBot]             = useState<Bot | null>(null)
-  const [docs, setDocs]           = useState<Document[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [updating, setUpdating]   = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [toggling, setToggling]   = useState(false)
-  const [showEdit, setShowEdit]   = useState(false)
-  const [activeTab, setActiveTab] = useState<Tab>("config")
-  const [copied, setCopied]       = useState(false)
-  const [botStats, setBotStats]   = useState<any>(null)
+  const [bot, setBot]               = useState<Bot | null>(null)
+  const [docs, setDocs]             = useState<Document[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [updating, setUpdating]     = useState(false)
+  const [uploading, setUploading]   = useState(false)
+  const [toggling, setToggling]     = useState(false)
+  const [showEdit, setShowEdit]     = useState(false)
+  const [activeTab, setActiveTab]   = useState<Tab>("config")
+  const [copied, setCopied]         = useState(false)
+  const [botStats, setBotStats]     = useState<any>(null)
+  const [convs, setConvs]           = useState<any[]>([])
+  const [loadingConvs, setLoadingConvs] = useState(false)
+  const [exportingId, setExportingId]   = useState<string | null>(null)
 
   // ✅ Charger bot + documents + stats
   useEffect(() => {
@@ -125,6 +128,41 @@ export default function BotDetailPage() {
     }
   }
 
+  // ✅ Charger conversations quand on clique sur l'onglet
+  const loadConversations = async () => {
+    if (convs.length > 0) return
+    setLoadingConvs(true)
+    try {
+      const res = await api.get(`/conversations/history/${id}/`)
+      setConvs(res.data)
+    } catch {
+      toast.error("Erreur chargement conversations.")
+    } finally {
+      setLoadingConvs(false)
+    }
+  }
+
+  // ✅ Export PDF ou Word
+  const handleExport = async (convId: string) => {
+    setExportingId(convId + "pdf")
+    try {
+      const res = await api.get(`/conversations/export/${convId}/`, {
+        responseType: "blob",
+      })
+      const url      = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }))
+      const link     = document.createElement("a")
+      link.href      = url
+      link.download  = `conversation_${convId.slice(0, 8)}.pdf`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success("Rapport PDF téléchargé ! 📥")
+    } catch {
+      toast.error("Erreur export.")
+    } finally {
+      setExportingId(null)
+    }
+  }
+
   // ✅ Copier widget
   const handleCopy = () => {
     navigator.clipboard.writeText(bot?.widget_snippet || "")
@@ -149,11 +187,12 @@ export default function BotDetailPage() {
   if (!bot) return null
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "config",    label: "Configuration", icon: "⚙️" },
-    { key: "documents", label: "Documents",      icon: "📄" },
-    { key: "widget",    label: "Widget",         icon: "🔌" },
-    { key: "preview",   label: "Aperçu Chat",    icon: "💬" },
-    { key: "stats",     label: "Stats",          icon: "📊" },
+    { key: "config",        label: "Configuration", icon: "⚙️" },
+    { key: "documents",     label: "Documents",     icon: "📄" },
+    { key: "widget",        label: "Widget",        icon: "🔌" },
+    { key: "preview",       label: "Aperçu Chat",   icon: "💬" },
+    { key: "stats",         label: "Stats",         icon: "📊" },
+    { key: "conversations", label: "Conversations", icon: "🗂" },
   ]
 
   const statusConfig = {
@@ -203,8 +242,8 @@ export default function BotDetailPage() {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">{bot.name}</h2>
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     <Badge
-                      label={bot.model === "claude" ? "Claude" : "GPT-4o"}
-                      color={bot.model === "claude" ? "violet" : "green"}
+                      label={bot.model === "claude" ? "Claude" : bot.model === "gemini" ? "Gemini" : bot.model === "groq" ? "LLaMA 3" : "GPT-4o"}
+                      color={bot.model === "claude" ? "violet" : bot.model === "gemini" ? "blue" : "green"}
                     />
                     <Badge label={bot.language.toUpperCase()} color="amber" />
                     <Badge
@@ -263,7 +302,7 @@ export default function BotDetailPage() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => { setActiveTab(tab.key); if (tab.key === "conversations") loadConversations() }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.key
                   ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow"
@@ -287,7 +326,7 @@ export default function BotDetailPage() {
               </h3>
               <div className="flex flex-col gap-3">
                 {[
-                  { label: "Modèle IA",   value: bot.model === "claude" ? "Claude (Anthropic)" : "GPT-4o (OpenAI)" },
+                  { label: "Modèle IA",   value: bot.model === "claude" ? "Claude (Anthropic)" : bot.model === "gemini" ? "Gemini (Google)" : bot.model === "groq" ? "LLaMA 3 (Groq)" : "GPT-4o (OpenAI)" },
                   { label: "Langue",      value: bot.language.toUpperCase() },
                   { label: "Statut",      value: bot.is_active ? "Actif" : "Inactif" },
                   { label: "Créé le",     value: new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) },
@@ -588,6 +627,73 @@ export default function BotDetailPage() {
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ─── Onglet Conversations ────────────────────── */}
+        {activeTab === "conversations" && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">🗂 Conversations</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Exportez chaque conversation en PDF ou Word
+                </p>
+              </div>
+              <button
+                onClick={() => { setConvs([]); loadConversations() }}
+                className="text-xs text-violet-600 hover:underline font-medium"
+              >
+                🔄 Actualiser
+              </button>
+            </div>
+
+            {loadingConvs ? (
+              <div className="flex flex-col gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : convs.length === 0 ? (
+              <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+                <p className="text-5xl mb-3">💬</p>
+                <p className="text-gray-500 font-medium">Aucune conversation</p>
+                <p className="text-gray-400 text-sm mt-1">Les conversations apparaîtront ici après les premiers échanges</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {convs.map((conv: any) => (
+                  <div
+                    key={conv.id}
+                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl"
+                  >
+                    <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
+                      💬
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        Session {String(conv.session_id).slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(conv.created_at).toLocaleDateString("fr-FR", {
+                          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                        })}
+                        {" · "}{conv.message_count ?? "—"} messages
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleExport(conv.id)}
+                        disabled={exportingId === conv.id + "pdf"}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950 dark:hover:bg-red-900 text-red-600 text-xs font-medium transition disabled:opacity-50"
+                      >
+                        {exportingId === conv.id + "pdf" ? "⏳" : "📕"} PDF
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

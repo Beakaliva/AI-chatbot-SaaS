@@ -1,6 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["10.15.8.59"],
   experimental: {
     staleTimes: {
       dynamic: 0,

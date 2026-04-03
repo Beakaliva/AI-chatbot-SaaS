@@ -9,8 +9,9 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationSerializer(serializers.ModelSerializer):
-    messages = MessageSerializer(many=True, read_only=True)
+    messages      = MessageSerializer(many=True, read_only=True)
+    message_count = serializers.IntegerField(source="messages.count", read_only=True)
 
     class Meta:
         model  = Conversation
-        fields = ["id", "session_id", "created_at", "messages"]
+        fields = ["id", "session_id", "created_at", "message_count", "messages"]

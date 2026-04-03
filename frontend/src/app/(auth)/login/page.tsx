@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -19,6 +20,11 @@ export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens)
   const [loading, setLoading]   = useState(false)
   const [showPass, setShowPass] = useState(false)
+
+  useEffect(() => {
+    const token = Cookies.get("access_token")
+    if (token) router.replace("/dashboard")
+  }, [])
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>()
 

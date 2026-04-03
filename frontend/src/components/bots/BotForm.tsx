@@ -7,7 +7,7 @@ import { Bot } from "@/types"
 
 interface BotFormData {
   name: string
-  model: "claude" | "gpt"
+  model: "claude" | "gpt" | "gemini" | "groq"
   system_prompt: string
   language: string
   color: string
@@ -52,6 +52,8 @@ export default function BotForm({ defaultValues, onSubmit, loading, submitLabel 
         >
           <option value="claude">🤖 Claude (Anthropic)</option>
           <option value="gpt">🟢 GPT-4o (OpenAI)</option>
+          <option value="gemini">✨ Gemini (Google)</option>
+          <option value="groq">⚡ LLaMA 3 (Groq — Gratuit)</option>
         </select>
       </div>
 

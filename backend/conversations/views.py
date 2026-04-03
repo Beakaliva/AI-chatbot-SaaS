@@ -3,11 +3,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 
 from bots.models import Bot
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 from .utils import get_ai_response
+from .export import generate_pdf
 
 
 class StartConversationView(APIView):
@@ -93,3 +95,18 @@ class ConversationHistoryView(APIView):
         bot   = get_object_or_404(Bot, id=bot_id, user=request.user)
         convs = Conversation.objects.filter(bot=bot)
         return Response(ConversationSerializer(convs, many=True).data)
+
+
+class ExportConversationView(APIView):
+    """Exporte une conversation en PDF."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, conversation_id):
+        conv = get_object_or_404(Conversation, id=conversation_id, bot__user=request.user)
+        msgs = conv.messages.all()
+        content  = generate_pdf(conv, msgs)
+        filename = f"conversation_{str(conv.id)[:8]}.pdf"
+
+        response = HttpResponse(content, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response

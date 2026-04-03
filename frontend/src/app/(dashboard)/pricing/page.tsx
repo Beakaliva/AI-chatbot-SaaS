@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Navbar from "@/components/layout/Navbar"
 import { useAuthStore } from "@/store/authStore"
 import api from "@/lib/api"
@@ -72,17 +71,14 @@ const plans = [
 ]
 
 export default function PricingPage() {
-  const router  = useRouter()
-  const user    = useAuthStore((s) => s.user)
-  const setUser = useAuthStore((s) => s.setUser)
+  const user = useAuthStore((s) => s.user)
 
   const [currency, setCurrency]   = useState<"usd" | "gnf">("usd")
-  const [provider, setProvider]   = useState<"stripe" | "orange">("stripe")
+  const [provider, setProvider]   = useState<"stripe" | "orange" | "paydunya" | "cinetpay">("paydunya")
   const [loading, setLoading]     = useState<string | null>(null)
   const [phone, setPhone]         = useState("")
   const [showPhone, setShowPhone] = useState<string | null>(null)
 
-  // ✅ Paiement Stripe
   const handleStripe = async (plan: string) => {
     setLoading(plan)
     try {
@@ -95,7 +91,30 @@ export default function PricingPage() {
     }
   }
 
-  // ✅ Init Orange Money
+  const handlePayDunya = async (plan: string) => {
+    setLoading(plan)
+    try {
+      const res = await api.post("/payments/paydunya/checkout/", { plan })
+      window.location.href = res.data.checkout_url
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Erreur PayDunya.")
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleCinetPay = async (plan: string) => {
+    setLoading(plan)
+    try {
+      const res = await api.post("/payments/cinetpay/checkout/", { plan })
+      window.location.href = res.data.checkout_url
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Erreur CinetPay.")
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const handleOrangeMoney = async (plan: string) => {
     if (!phone.trim()) {
       toast.error("Entrez votre numéro Orange Money.")
@@ -104,8 +123,7 @@ export default function PricingPage() {
     setLoading(plan)
     try {
       const res = await api.post("/payments/orange/init/", { plan, phone })
-      toast.success("Instructions de paiement envoyées ! 📱")
-      console.log(res.data)
+      toast.success(`Instructions envoyées ! 📱 ${res.data.instruction}`)
       setShowPhone(null)
       setPhone("")
     } catch (err: any) {
@@ -117,11 +135,10 @@ export default function PricingPage() {
 
   const handleSubscribe = (plan: string) => {
     if (plan === "free") return
-    if (provider === "stripe") {
-      handleStripe(plan)
-    } else {
-      setShowPhone(plan)
-    }
+    if (provider === "stripe")   { handleStripe(plan); return }
+    if (provider === "paydunya") { handlePayDunya(plan); return }
+    if (provider === "cinetpay") { handleCinetPay(plan); return }
+    setShowPhone(plan)
   }
 
   const colorStyles: Record<string, string> = {
@@ -187,27 +204,25 @@ export default function PricingPage() {
           </div>
 
           {/* Provider */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-            <button
-              onClick={() => setProvider("stripe")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                provider === "stripe"
-                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow"
-                  : "text-gray-500"
-              }`}
-            >
-              💳 Carte (Stripe)
-            </button>
-            <button
-              onClick={() => setProvider("orange")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                provider === "orange"
-                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow"
-                  : "text-gray-500"
-              }`}
-            >
-              🟠 Orange Money
-            </button>
+          <div className="flex flex-wrap items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+            {([
+              { key: "paydunya",  label: "🇸🇳 PayDunya" },
+              { key: "cinetpay",  label: "🌍 CinetPay" },
+              { key: "orange",    label: "🟠 Orange Money" },
+              { key: "stripe",    label: "💳 Stripe" },
+            ] as const).map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setProvider(p.key)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  provider === p.key
+                    ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow"
+                    : "text-gray-500"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -215,8 +230,7 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
           {plans.map((plan) => {
             const isCurrent = user?.plan === plan.key
-            const price     = currency === "usd" ? plan.price_usd : plan.price_gnf
-            const currency_ = currency === "usd" ? "$" : "GNF"
+            const price = currency === "usd" ? plan.price_usd : plan.price_gnf
 
             return (
               <div
@@ -290,6 +304,10 @@ export default function PricingPage() {
                     ? "Plan gratuit"
                     : provider === "stripe"
                     ? "💳 Payer avec Stripe"
+                    : provider === "paydunya"
+                    ? "🇸🇳 Payer avec PayDunya"
+                    : provider === "cinetpay"
+                    ? "🌍 Payer avec CinetPay"
                     : "🟠 Payer avec Orange Money"
                   }
                 </button>

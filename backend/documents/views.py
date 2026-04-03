@@ -8,7 +8,48 @@ from bots.models import Bot
 from .models import Document
 from .serializers import DocumentSerializer, DocumentUploadSerializer
 from .utils import extract_text_from_pdf
+from .utils import extract_text_from_pdf, extract_text_from_url
 
+class URLScrapeView(APIView):
+    """Scrape un site web et l'ajoute comme document."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, bot_id):
+        bot = get_object_or_404(Bot, id=bot_id, user=request.user)
+        url = request.data.get("url", "").strip()
+
+        if not url:
+            return Response(
+                {"error": "URL requise."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Créer le document en attente
+        doc = Document.objects.create(
+            bot        = bot,
+            filename   = url,
+            source     = "url",
+            source_url = url,
+            status     = "processing"
+        )
+
+        try:
+            text       = extract_text_from_url(url)
+            doc.content = text
+            doc.status  = "done"
+        except Exception as e:
+            doc.status = "error"
+            doc.save()
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        doc.save()
+        return Response(
+            DocumentSerializer(doc).data,
+            status=status.HTTP_201_CREATED
+        )
 
 class DocumentListCreateView(APIView):
     permission_classes = [IsAuthenticated]

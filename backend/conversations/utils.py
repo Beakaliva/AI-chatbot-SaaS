@@ -1,5 +1,6 @@
 import os
 import anthropic
+import google.generativeai as genai
 from openai import OpenAI
 from groq import Groq
 
@@ -54,6 +55,30 @@ def call_groq(system, messages, user_message):
     return response.choices[0].message.content
 
 
+def call_gemini(system, messages, user_message):
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    model = genai.GenerativeModel(
+        model_name    = "gemini-1.5-flash",
+        system_instruction = system,
+    )
+    # Convertir l'historique au format Gemini
+    history = []
+    for msg in messages:
+        role = "user" if msg["role"] == "user" else "model"
+        history.append({"role": role, "parts": [msg["content"]]})
+
+    chat     = model.start_chat(history=history)
+    response = chat.send_message(user_message)
+    return response.text
+
+
 def get_ai_response(bot, conversation, user_message):
     system, messages = build_context(bot, conversation)
-    return call_groq(system, messages, user_message)
+    if bot.model == "gpt":
+        return call_gpt(system, messages, user_message)
+    elif bot.model == "claude":
+        return call_claude(system, messages, user_message)
+    elif bot.model == "gemini":
+        return call_gemini(system, messages, user_message)
+    else:
+        return call_groq(system, messages, user_message)

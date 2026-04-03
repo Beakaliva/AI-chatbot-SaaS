@@ -7,6 +7,8 @@ class Bot(models.Model):
     MODEL_CHOICES = [
         ("claude", "Claude (Anthropic)"),
         ("gpt",    "GPT (OpenAI)"),
+        ("gemini", "Gemini (Google)"),
+        ("groq",   "LLaMA 3 (Groq)"),
     ]
 
     LANG_CHOICES = [

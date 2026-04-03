@@ -6,14 +6,14 @@ import { useState, useEffect } from "react"
 const features = [
   {
     icon: "🤖",
-    title: "IA de pointe",
-    desc: "Claude (Anthropic) et GPT-4o intégrés. Choisissez le meilleur modèle pour votre usage.",
+    title: "4 modèles IA",
+    desc: "Claude, GPT-4o, Gemini et LLaMA 3 (Groq). Choisissez le meilleur modèle pour chaque bot.",
     color: "#8b5cf6",
   },
   {
     icon: "📄",
     title: "Base de connaissances",
-    desc: "Uploadez vos PDFs et FAQ. Votre bot répond avec vos propres données.",
+    desc: "Uploadez vos PDFs, FAQ et pages web. Votre bot répond avec vos propres données.",
     color: "#06b6d4",
   },
   {
@@ -29,16 +29,28 @@ const features = [
     color: "#f59e0b",
   },
   {
+    icon: "📑",
+    title: "Export PDF & Word",
+    desc: "Téléchargez vos conversations en PDF ou Word en un clic depuis votre dashboard.",
+    color: "#3b82f6",
+  },
+  {
     icon: "🌍",
     title: "Multilingue",
     desc: "Français, Anglais, Soussou, Pular, Malinké. Parlez la langue de vos clients.",
     color: "#ef4444",
   },
   {
-    icon: "🟠",
-    title: "Orange Money",
-    desc: "Paiement local en GNF via Orange Money. Conçu pour la Guinée et l'Afrique.",
+    icon: "💳",
+    title: "Paiements africains",
+    desc: "Orange Money, PayDunya et CinetPay. Payez en GNF directement depuis votre téléphone.",
     color: "#f97316",
+  },
+  {
+    icon: "🔒",
+    title: "Sécurisé & fiable",
+    desc: "Authentification JWT, données chiffrées, hébergement sécurisé. Votre vie privée protégée.",
+    color: "#64748b",
   },
 ]
 
@@ -265,7 +277,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f) => (
               <div
                 key={f.title}
